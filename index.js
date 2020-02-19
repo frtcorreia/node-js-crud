@@ -1,6 +1,10 @@
-const mysql = require('mysql');
-const express = require('express');
+var express = require("express");
 var app = express();
+var basicAuth = require('basic-auth');
+const mysql = require('mysql');
+const bodyparser = require('body-parser');
+
+app.use(bodyparser.json());
 
 var mysqlConnection = mysql.createConnection({
     host:'localhost',
@@ -16,29 +20,23 @@ mysqlConnection.connect((err)=>{
         console.log('DB connection faild \n Error: ' + JSON.stringify(err, undefined, 2));
 });
 
-app.listen(3000, ()=>console.log('Express server is running at port nr 3000'));
+var auth = function (req, res, next) {
+  var user = basicAuth(req);
+  if (!user || !user.name || !user.pass) {
+    res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
+    res.sendStatus(401);
+    return;
+  }
+  if (user.name === 'amy' && user.pass === 'passwd123') {
+    next();
+  } else {
+    res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
+    res.sendStatus(401);
+    return;
+  }
+}
 
-app.get( '/test', (req, res)=>{
-    mysqlConnection.query('SELECT * FROM media', (err, rows, fields)=>{
-        if(!err)
-        res.send(rows);
-        else
-        console.log(err);
-    })
-});
-
-// media 
-/*
-app.get( '/media', (req, res)=>{
-    mysqlConnection.query('SELECT * FROM media', (err, rows, fields)=>{
-        if(!err)
-        res.send(rows);
-        else
-        console.log(err);
-    })
-});
-
-app.get( '/media/media:id', (req, res)=>{
+app.get( '/media/media:id', auth, (req, res)=>{
     mysqlConnection.query('SELECT * FROM media WHERE id = ?', [req.params.id], (err, rows, fields)=>{
         if(!err)
         res.send(rows);
@@ -46,4 +44,18 @@ app.get( '/media/media:id', (req, res)=>{
         console.log(err);
     })
 });
-*/
+
+
+app.get( '/media', auth, (req, res)=>{
+    mysqlConnection.query('SELECT * FROM media', (err, rows, fields)=>{
+        if(!err)
+        res.send(rows); 
+        else
+        console.log(err);
+    })
+});
+
+ 
+ 
+app.listen(8000);
+console.log("app running");
